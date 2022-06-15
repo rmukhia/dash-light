@@ -1,0 +1,7 @@
+.idea
+cmake-build*
+build
+dependencies.lock
+sdkconfig.defaults
+sdkconfig.old
+*.swp
