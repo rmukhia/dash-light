@@ -26,8 +26,10 @@
 
 #include "sys/lock.h"
 #include "core/dash_light.h"
-#include "core/fft_task.h"
-#include "core/fft_buffer.h"
+#include "fft/fft_task.h"
+#include "fft/fft_buffer.h"
+#include "fft/fft_amplitude.h"
+#include "fft/fft_common.h"
 
 // AVRCP used transaction label
 #define APP_RC_CT_TL_GET_CAPS            (0)
@@ -72,9 +74,10 @@ void bt_app_a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
 
 void bt_app_a2d_data_cb(const uint8_t *data, uint32_t len)
 {
-    write_ringbuf(data, len);
+    fft_buffer_prepare_data(data, len);
+    //write_ringbuf(data, len);
     dashlight.bt_recv_len += len;
-    if (++s_pkt_cnt % 100 == 0) {
+    if (++s_pkt_cnt % 1000 == 0) {
         ESP_LOGI(BT_AV_TAG, "Audio packet count %u", s_pkt_cnt);
     }
 }
@@ -198,7 +201,13 @@ static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
             ESP_LOGI(BT_AV_TAG, "Audio player configured, sample rate=%d channel_mode=%d block_length=%d",
                      sample_rate, channel_mode, block_length);
 
-            fft_buffer_set_params(sample_rate, channel_mode, block_length);
+            dashlight.pcm.channel_mode = channel_mode;
+            dashlight.pcm.block_length = block_length;
+            dashlight.pcm.sample_rate = sample_rate;
+
+            fft_buffer_set_params();
+            fft_amp_set_params();
+            fft_task_start();
         }
         break;
     }

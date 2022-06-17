@@ -17,7 +17,7 @@
 #include <unistd.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include <freertos/task.h>
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "esp_system.h"
@@ -31,8 +31,7 @@
 #include "esp_gap_bt_api.h"
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
-#include "core/fft_task.h"
-#include "core/fft_buffer.h"
+#include "fft/fft_common.h"
 
 /* event for handler "bt_av_hdl_stack_up */
 enum {
@@ -42,6 +41,7 @@ enum {
 /* handler for bluetooth stack enabled events */
 static void bt_av_hdl_stack_evt(uint16_t event, void *p_param);
 
+static void run_per_sec_task(void *pv);
 
 void app_main(void)
 {
@@ -77,14 +77,16 @@ void app_main(void)
     }
 
     fft_test();
-    fft_buffer_init();
+    fft_init();
 
     /* create application task */
     bt_app_task_start_up();
 
-    fft_task_init();
+    xTaskHandle tsk_hdl = NULL;
 
-    fft_task_start();
+    xTaskCreate(run_per_sec_task, "run per sec", 2048, NULL, configMAX_PRIORITIES - 10, tsk_hdl);
+
+
 
     /* Bluetooth device name, connection mode and profile set up */
     bt_app_work_dispatch(bt_av_hdl_stack_evt, BT_APP_EVT_STACK_UP, NULL, 0, NULL);
@@ -180,5 +182,26 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
     default:
         ESP_LOGE(BT_AV_TAG, "%s unhandled evt %d", __func__, event);
         break;
+    }
+}
+
+
+static void run_per_sec_task(void *pv)
+{
+    size_t num_bands;
+    float *bands;
+    for(;;)
+    {
+        if (fft_bands_lock_acquire(pdMS_TO_TICKS(20))) {
+            bands = fft_common_get_bands(&num_bands);
+
+            for (size_t n = 0; n < num_bands; n ++) {
+                printf("%f - ", bands[n]);
+            }
+            printf("\n");
+
+            fft_bands_lock_release();
+        }
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }

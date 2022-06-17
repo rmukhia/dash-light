@@ -10,5 +10,6 @@ dashlight_t dashlight = {
     .pcm = {
         .sample_rate = 441000,
         .channel_mode = STEREO,
-    }
+        .block_length = SIXTEEN,
+    },
 };

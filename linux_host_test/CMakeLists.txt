@@ -10,7 +10,7 @@ project(test-app)
 set(SOURCE
         ${CMAKE_CURRENT_SOURCE_DIR}/test_runner.c
         # add sources in current directory here
-        ../main/core/fft_buffer.c ../main/core/fft_buffer.h mock/headers/freertos/portmacro.h)
+        ../main/fft/fft_buffer.c ../main/fft/fft_buffer.h mock/headers/freertos/portmacro.h)
 
 set(INCLUDE_DIRS '')
 
@@ -41,7 +41,7 @@ include_directories(${INCLUDE_DIRS})
 
 
 add_executable(test-app ${SOURCE})
-target_link_libraries(test-app unity)
+target_link_libraries(test-app unity m)
 # Copy pretest script to build
 add_custom_command(TARGET test-app POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy

@@ -14,6 +14,7 @@
 typedef void * SemaphoreHandle_t;
 
 #define vSemaphoreCreateBinary(x)
+#define xSemaphoreCreateMutex(x)    NULL
 #define xSemaphoreGive(x)           true
 #define xSemaphoreTake(x, timeout)  true
 #define vSemaphoreDelete(x)

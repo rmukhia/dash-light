@@ -2,7 +2,8 @@
 
 set(SOURCE
         ${SOURCE}
-        ${CMAKE_CURRENT_SOURCE_DIR}/../core/fft_buffer.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../fft/fft_buffer.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../fft/fft_amplitude.c
         ${CMAKE_CURRENT_SOURCE_DIR}/../core/dash_light.c
         PARENT_SCOPE
         )
