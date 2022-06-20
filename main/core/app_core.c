@@ -10,8 +10,6 @@
 #include "app_core.h"
 #include "freertos/ringbuf.h"
 #include "dash_light.h"
-#include "fft/fft_task.h"
-#include "fft/fft_buffer.h"
 
 static const char *TAG="APP_CORE";
 #define BT_APP_SIG_WORK_DISPATCH          (0x01)
@@ -121,7 +119,6 @@ static void bt_recv_task_handler(void *arg)
     for (;;) {
         data = (uint8_t *)xRingbufferReceive(s_ringbuf_in, &item_size, (portTickType)portMAX_DELAY);
         if (item_size != 0){
-            fft_buffer_prepare_data(data, item_size);
             vRingbufferReturnItem(s_ringbuf_in, (void *)data);
         }
     }

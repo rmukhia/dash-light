@@ -26,10 +26,7 @@
 
 #include "sys/lock.h"
 #include "core/dash_light.h"
-#include "fft/fft_task.h"
-#include "fft/fft_buffer.h"
-#include "fft/fft_amplitude.h"
-#include "fft/fft_common.h"
+#include "freqb.h"
 
 // AVRCP used transaction label
 #define APP_RC_CT_TL_GET_CAPS            (0)
@@ -74,7 +71,7 @@ void bt_app_a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
 
 void bt_app_a2d_data_cb(const uint8_t *data, uint32_t len)
 {
-    fft_buffer_prepare_data(data, len);
+    freqb_prepare_data(data, len);
     //write_ringbuf(data, len);
     dashlight.bt_recv_len += len;
     if (++s_pkt_cnt % 1000 == 0) {
@@ -150,10 +147,22 @@ static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
     }
     case ESP_A2D_AUDIO_STATE_EVT: {
         a2d = (esp_a2d_cb_param_t *)(p_param);
-        ESP_LOGI(BT_AV_TAG, "A2DP audio state: %s", s_a2d_audio_state_str[a2d->audio_stat.state]);
         s_audio_state = a2d->audio_stat.state;
-        if (ESP_A2D_AUDIO_STATE_STARTED == a2d->audio_stat.state) {
-            s_pkt_cnt = 0;
+
+        ESP_LOGI(BT_AV_TAG, "A2DP audio state: %s", s_a2d_audio_state_str[s_audio_state]);
+
+        switch (s_audio_state) {
+
+            case ESP_A2D_AUDIO_STATE_REMOTE_SUSPEND:
+                freqb_stop();
+                break;
+            case ESP_A2D_AUDIO_STATE_STOPPED:
+                freqb_stop();
+                break;
+            case ESP_A2D_AUDIO_STATE_STARTED:
+                s_pkt_cnt = 0;
+                freqb_start();
+                break;
         }
         break;
     }
@@ -205,9 +214,15 @@ static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
             dashlight.pcm.block_length = block_length;
             dashlight.pcm.sample_rate = sample_rate;
 
-            fft_buffer_set_params();
-            fft_amp_set_params();
-            fft_task_start();
+            freqb_params_t params = {
+                .num_bands = 10,
+                .sample_rate = sample_rate,
+                .block_length = block_length,
+                .channel_mode = channel_mode,
+            };
+
+            ESP_ERROR_CHECK(freqb_set_params(params));
+
         }
         break;
     }

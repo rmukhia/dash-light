@@ -31,7 +31,8 @@
 #include "esp_gap_bt_api.h"
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
-#include "fft/fft_common.h"
+#include "io/oled.h"
+#include "freqb.h"
 
 /* event for handler "bt_av_hdl_stack_up */
 enum {
@@ -76,8 +77,9 @@ void app_main(void)
         return;
     }
 
-    fft_test();
-    fft_init();
+    //freqb_test();
+    freqb_init();
+    io_oled_init();
 
     /* create application task */
     bt_app_task_start_up();
@@ -189,18 +191,15 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
 static void run_per_sec_task(void *pv)
 {
     size_t num_bands;
-    float *bands;
+    float bands[12];
     for(;;)
     {
-        if (fft_bands_lock_acquire(pdMS_TO_TICKS(20))) {
-            bands = fft_common_get_bands(&num_bands);
-
+        if (freqb_get_val(bands, &num_bands, pdMS_TO_TICKS(20)) == ESP_OK) {
             for (size_t n = 0; n < num_bands; n ++) {
                 printf("%f - ", bands[n]);
             }
             printf("\n");
 
-            fft_bands_lock_release();
         }
         vTaskDelay(pdMS_TO_TICKS(50));
     }
