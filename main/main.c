@@ -31,8 +31,9 @@
 #include "esp_gap_bt_api.h"
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
-#include "io/oled.h"
+#include "display/oled.h"
 #include "freqb.h"
+#include "network/wifi_mqtt.h"
 
 /* event for handler "bt_av_hdl_stack_up */
 enum {
@@ -77,16 +78,17 @@ void app_main(void)
         return;
     }
 
+    wifi_init_sta();
     //freqb_test();
-    freqb_init();
-    io_oled_init();
+    ESP_ERROR_CHECK(freqb_init());
+    //ESP_ERROR_CHECK(display_oled_init());
 
     /* create application task */
     bt_app_task_start_up();
 
     xTaskHandle tsk_hdl = NULL;
 
-    xTaskCreate(run_per_sec_task, "run per sec", 2048, NULL, configMAX_PRIORITIES - 10, tsk_hdl);
+    // xTaskCreate(run_per_sec_task, "run per sec", 2048, NULL, configMAX_PRIORITIES - 10, tsk_hdl);
 
 
 

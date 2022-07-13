@@ -30,9 +30,12 @@ static const char *TAG = "FREQB";
 #define  TRACE_FUNC
 #endif
 
-#define FFT_BUFFER_SIZE   (FREQB_FFT_SAMPLE_SIZE * 2)
-#define FREQ_BIN_SIZE     (FREQB_FFT_SAMPLE_SIZE / 2 + 1)
-#define MAX_BANDS         12
+#define FFT_BUFFER_SIZE     (FREQB_FFT_SAMPLE_SIZE * 2)
+#define FREQ_BIN_SIZE       (FREQB_FFT_SAMPLE_SIZE / 2 + 1)
+
+#define FFT_TO_AMPRMS(x, y) (M_SQRT2 * sqrtf((x) * (x) + (y) * (y))/FREQB_FFT_SAMPLE_SIZE)
+
+#define AMPRMS_TO_DB(x)     (20* log10f((x)/ 0.78))
 
 #define VERIFY_SUCCESS(stmt)    {                   \
     esp_err_t ret = stmt;                           \
@@ -82,7 +85,7 @@ typedef struct amplitude_hdl_s {
 
 /* handler for output, most likely db values */
 typedef struct band_hdl_s {
-    float val[MAX_BANDS];
+    float val[FREQB_MAX_BANDS];
     SemaphoreHandle_t val_mutex;
 } band_hdl_t;
 
@@ -321,10 +324,16 @@ esp_err_t __amp_set_params(size_t num_bands, int sample_rate)
         }
     }
 
+    /*
+    for (size_t i =0; i < FREQ_BIN_SIZE; i ++) {
+        printf ("f: %d b: %i\n", hdl->freq_bin[i].freq,  hdl->freq_bin[i].bin);
+    }
+     */
+
     return ESP_OK;
 }
 
-static float __amp_bands[MAX_BANDS] = {0};
+static float __amp_bands[FREQB_MAX_BANDS] = {0};
 
 float *__amp_get_bins(const float *amplitude, size_t in_len)
 {
@@ -343,7 +352,7 @@ float *__amp_get_bins(const float *amplitude, size_t in_len)
         } else {
             // get max amplitude
             if (__amp_bands[hdl->freq_bin[n].bin] < amplitude[n]) {
-                __amp_bands[hdl->freq_bin[n].bin] = amplitude[n];
+                __amp_bands[hdl->freq_bin[n].bin] += amplitude[n];
             }
         }
 
@@ -373,14 +382,26 @@ void __band_deinit()
 void __band_set_val(const float *val)
 {
     band_hdl_t *hdl = get_band_hdl(freqb_hdl);
+    float *result = NULL;
     //(num_bands == freqb.bands.num);
 
+    if (freqb_hdl.params.cb_result) {
+        result = malloc(freqb_hdl.params.num_bands * sizeof(float));
+    }
+
     if (xSemaphoreTake(hdl->val_mutex, pdMS_TO_TICKS(20))) {
-        for (size_t n = 0; n < freqb_hdl.params.num_bands; n++) {
-            //freqb.bands.db[n] = (20.f * log10(val[n]/ 0.78));
-            hdl->val[n] = val[n];
+        for (size_t i = 0; i < freqb_hdl.params.num_bands; i++) {
+            //freqb.bands.db[i] = (20.f * log10(val[i]/ 0.78));
+            hdl->val[i] = AMPRMS_TO_DB(val[i]);
+            if (freqb_hdl.params.cb_result) {
+                result[i] = hdl->val[i];
+            }
         }
         xSemaphoreGive(hdl->val_mutex);
+    }
+
+    if (freqb_hdl.params.cb_result) {
+        freqb_hdl.params.cb_result(freqb_hdl.params.num_bands, result);
     }
 }
 
@@ -420,19 +441,20 @@ static float amplitude[FREQ_BIN_SIZE] = {0};
 void __fft_task(void *pv)
 {
     ESP_LOGI(TAG, "%s started", __func__);
-    TickType_t last_wakeup_time;
+    //TickType_t last_wakeup_time;
     TickType_t period;
     fft_buffer_t buf;
     float *amplitude_bins = NULL;
 
     period = pdMS_TO_TICKS(10);
     ESP_LOGI(TAG, "Period %u", period);
-    last_wakeup_time = xTaskGetTickCount();
+    //last_wakeup_time = xTaskGetTickCount();
 
     for (;;) {
         if (!__buffer_get_buf(&buf, portMAX_DELAY)) {
             // we failed to get a buffer
-            goto end_loop;
+            //goto end_loop;
+            continue;
         }
 
         //dsps_mul_f32(buf.ptr, __fft_task.han_window, buf.ptr, FFT_SAMPLE_SIZE, 2, 1, 2);
@@ -448,7 +470,7 @@ void __fft_task(void *pv)
         dsps_bit_rev2r_fc32(buf.ptr, FREQB_FFT_SAMPLE_SIZE);
 #endif
         for (size_t i = 0; i <= FREQB_FFT_SAMPLE_SIZE / 2; i++) {
-            amplitude[i] = hypotf(buf.ptr[i * 2], buf.ptr[i * 2 + 1]);
+            amplitude[i] = FFT_TO_AMPRMS(buf.ptr[i * 2], buf.ptr[i * 2 + 1]);
         }
         __buffer_free(&buf);
 
@@ -457,13 +479,14 @@ void __fft_task(void *pv)
 
         if (!amplitude_bins) {
             ESP_LOGE(TAG, "Could not create amplitude bin.");
-            goto end_loop;
+            //goto end_loop;
+            continue;
         }
 
         __band_set_val(amplitude_bins);
 
-end_loop:
-        vTaskDelayUntil(&last_wakeup_time, period);
+//end_loop:
+        //vTaskDelayUntil(&last_wakeup_time, period);
     }
 }
 

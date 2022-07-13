@@ -10,6 +10,8 @@
 #include "app_core.h"
 #include "freertos/ringbuf.h"
 #include "dash_light.h"
+#include "display/oled.h"
+#include "network/wifi_mqtt.h"
 
 static const char *TAG="APP_CORE";
 #define BT_APP_SIG_WORK_DISPATCH          (0x01)
@@ -154,4 +156,28 @@ size_t write_ringbuf(const uint8_t *data, size_t size)
     } else {
         return 0;
     }
+}
+
+void freqb_cb(size_t num_bands, float *val)
+{
+#if 0
+    display_cmd_t cmd = {
+        .mode = DISPLAY_MODE_EQ,
+        .eq_params = {
+            .num_bands = num_bands,
+        },
+    };
+#endif
+
+    wifi_mqtt_cmd_t mqtt_cmd = {
+        .type = WIFI_MQTT_CMD_SEND_FREQB,
+        .sendfreqb = {
+            .num_bands = num_bands,
+        }
+    };
+
+    memcpy(mqtt_cmd.sendfreqb.val, val, num_bands * sizeof (float));
+    free(val);
+    //display_oled_update(&cmd);
+    wifi_mqtt_put_cmd(&mqtt_cmd);
 }

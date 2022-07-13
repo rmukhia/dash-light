@@ -10,6 +10,7 @@
 #define FREQB_FFT_SAMPLE_SIZE   1024
 #define FREQB_FFT_ALGO_RADIX4
 //#define FREQB_FFT_ALGO_RADIX2
+#define FREQB_MAX_BANDS         12
 
 typedef enum freq_channel_mode_e {
     FREQB_CM_MONO           = 0x01,
@@ -30,6 +31,7 @@ typedef struct freqb_params_s {
     freqb_block_length_t block_length;
     int sample_rate;
     size_t num_bands;
+    void (*cb_result)(size_t num_bands, float *val);
 } freqb_params_t;
 
 /* default parameters */

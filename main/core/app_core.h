@@ -26,6 +26,8 @@ void bt_recv_task_start_up(void);
 
 void bt_recv_task_shut_down(void);
 
+void freqb_cb(size_t num_bands, float *val);
+
 size_t write_ringbuf(const uint8_t *data, size_t size);
 
 #endif /* __APP_CORE_H__ */

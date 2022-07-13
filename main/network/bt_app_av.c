@@ -219,6 +219,7 @@ static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
                 .sample_rate = sample_rate,
                 .block_length = block_length,
                 .channel_mode = channel_mode,
+                .cb_result = freqb_cb,
             };
 
             ESP_ERROR_CHECK(freqb_set_params(params));

@@ -31,6 +31,7 @@ typedef struct dashlight_s {
     } pcm;
 } dashlight_t;
 
+
 extern dashlight_t dashlight;
 
 #endif //DASH_LIGHT_H
